@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pod-reader
+
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+
+---
+  
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: read-pods
+subjects:
+- kind: ServiceAccount
+  name: pod-reader
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cubeearth-example-kubectl
+  labels:
+    type: job
+spec:
+  template:
+    spec:
+      serviceAccountName: pod-reader
+      containers:
+      - name: cubeearth-example-kubectl
+        image: cubeearth/script-execution
+        imagePullPolicy: Always
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace        
+        - name: SCRIPT
+          value: |
+            #!/bin/bash
+            set +o errexit
+            env
+            ls -l /var/run/secrets/kubernetes.io/serviceaccount/token
+            ls -l /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            cat /var/run/secrets/kubernetes.io/serviceaccount/namespace
+            echo
+            ping kubernetes.default.svc -c 2
+            curl -sk \
+            -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+            https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/namespaces/$POD_NAMESPACE/pods \
+            | jq -r '.items[].metadata.name'
+            kubectl get pods --namespace=$POD_NAMESPACE
+      restartPolicy: Never
+  completions: 1
+  backoffLimit: 1
