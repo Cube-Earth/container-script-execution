@@ -1,0 +1,4 @@
+version: '3'
+services:
+  main:
+    image: cubeearth/script-execution
