@@ -3,3 +3,6 @@ services:
   main:
     build: .
 
+#    environment:
+#    - SCRIPT: |-
+#        ls
