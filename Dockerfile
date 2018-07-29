@@ -11,4 +11,4 @@ RUN curl -Lo /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-re
 ADD run.sh /usr/bin
 RUN chmod +x /usr/bin/run.sh
 
-ENTRYPOINT [ "/bin/bash" ]
+ENTRYPOINT [ "/usr/bin/run.sh" ]
