@@ -1,6 +1,6 @@
 FROM alpine
 
-RUN apk --no-cache add wget curl bash html-xml-utils xmlstarlet tidyhtml ca-certificates openssl jq
+RUN apk --no-cache add wget curl bash html-xml-utils xmlstarlet tidyhtml ca-certificates openssl jq git
 
 #RUN curl -q https://kubernetes.io/docs/imported/release/ |  tidy -q -numeric -asxhtml --show-warnings no \
 #	| xmlstarlet sel -N xhtml="http://www.w3.org/1999/xhtml" -t -m "//xhtml:a/@href[contains(., 'client') and contains(., 'linux') and contains(., 'amd64')]" -v '.'
