@@ -8,7 +8,7 @@ RUN apk --no-cache add wget curl bash html-xml-utils xmlstarlet tidyhtml ca-cert
 RUN curl -Lo /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \
 	chmod +x /usr/local/bin/kubectl
 
-ADD scripts/* /usr/bin
+ADD scripts/* /usr/bin/
 RUN chmod +x /usr/bin/*.sh
 
 ENTRYPOINT [ "/usr/bin/run.sh" ]
