@@ -1,0 +1,67 @@
+#!/bin/bash
+set -o errexit
+set -o pipefail
+set -o nounset
+
+function dump {
+	echo
+	kubectl get pods -n "$K8S_NAMESPACE" -o json  | jq -r '.items[] | .metadata.namespace + "/" + .metadata.name + " - " + .status.phase + " - " + .metadata.deletionTimestamp'
+}
+
+function waitForPods {
+	local RETRIES=30
+	local WAIT_PERIOD=10
+	
+	[[ "$#" -gt 0 ]] && [[ -f "$1/wait.settings" ]] && . "$1/wait.settings"
+	
+	echo -n "waiting ..."
+	local n=`kubectl get pods -n "$K8S_NAMESPACE" -o json  | jq -r '.items[] | select((.metadata.ownerReferences[].kind == "Job" and .status.phase != "Succeeded") or (.metadata.ownerReferences[].kind != "Job" and .status.phase != "Running") or (.metadata.deletionTimestamp != null)) | .metadata.namespace + "/" + .metadata.name' | wc -l`
+	while [[ "$n" -ne 0 ]]
+	do
+		n=`kubectl get pods -n "$K8S_NAMESPACE" -o json  | jq -r '.items[] | select((.metadata.ownerReferences[].kind == "Job" and .status.phase != "Succeeded" and .status.phase != "Running" and .status.phase != "Pending") or (.metadata.ownerReferences[].kind != "Job" and .status.phase != "Running" and .status.phase != "Pending")) | .metadata.namespace + "/" + .metadata.name' | wc -l`
+		[[ "$n" -ne 0 ]] && dump && echo "ERROR: pod(s) in error state found!" && return 1
+		RETRIES=$((RETRIES-1))
+		if [[ "$RETRIES" -le 0 ]]
+		then
+			echo
+			echo "ERROR: wait time exceeded!"
+			return 1
+		fi
+		
+		echo -n "."
+		sleep $WAIT_PERIOD
+		n=`kubectl get pods -n "$K8S_NAMESPACE" -o json  | jq -r '.items[] | select((.metadata.ownerReferences[].kind == "Job" and .status.phase != "Succeeded") or (.metadata.ownerReferences[].kind != "Job" and .status.phase != "Running") or (.metadata.deletionTimestamp != null)) | .metadata.namespace + "/" + .metadata.name' | wc -l`
+	done
+	echo
+}
+
+
+function undeploy {
+  waitForPods
+  for i in `ls -1 | grep -E "^[0-9]+" | grep -vE "^0+[^0-9]+" | sort -r`
+  do
+    for j in `ls -1 "$i" | grep -E "\.yaml|\.yml" | sort -r`
+    do
+      echo "undeploying $i/$j ..."
+  	  kubectl delete -n "$K8S_NAMESPACE" -f "$i/$j" || true
+  	  sleep 2
+    done
+    waitForPods "$i"
+  done
+}
+
+if [[ ! -z "${1-}" ]]
+then
+	git clone "$1" git
+	cd git
+elif [[ ! -z "${GIT_URL-}" ]]
+then
+	git clone "$GIT_URL" git
+	cd git
+fi
+
+undeploy
+
+echo
+echo "finished!"
+
