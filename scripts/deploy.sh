@@ -5,7 +5,7 @@ set -o nounset
 
 function dump {
 	echo
-	kubectl get pods -n "$K8S_NAMESPACE" -o json  | jq -r '.items[] | .metadata.namespace + "/" + .metadata.name + " - " + .status.phase + " - " + .metadata.deletionTimestamp'
+	kubectl get pods -n "$POD_NAMESPACE" -o json  | jq -r '.items[] | .metadata.namespace + "/" + .metadata.name + " - " + .status.phase + " - " + .metadata.deletionTimestamp'
 }
 
 function waitForPods {
@@ -15,10 +15,10 @@ function waitForPods {
 	[[ "$#" -gt 0 ]] && [[ -f "$1/wait.settings" ]] && . "$1/wait.settings"
 	
 	echo -n "waiting ..."
-	local n=`kubectl get pods -n "$K8S_NAMESPACE" -o json  | jq -r '.items[] | select((.metadata.ownerReferences[].kind == "Job" and .status.phase != "Succeeded") or (.metadata.ownerReferences[].kind != "Job" and .status.phase != "Running") or (.metadata.deletionTimestamp != null)) | .metadata.namespace + "/" + .metadata.name' | wc -l`
+	local n=`kubectl get pods -n "$POD_NAMESPACE" -o json  | jq -r '.items[] | select((.metadata.ownerReferences[].kind == "Job" and .status.phase != "Succeeded") or (.metadata.ownerReferences[].kind != "Job" and .status.phase != "Running") or (.metadata.deletionTimestamp != null)) | .metadata.namespace + "/" + .metadata.name' | wc -l`
 	while [[ "$n" -ne 0 ]]
 	do
-		n=`kubectl get pods -n "$K8S_NAMESPACE" -o json  | jq -r '.items[] | select((.metadata.ownerReferences[].kind == "Job" and .status.phase != "Succeeded" and .status.phase != "Running" and .status.phase != "Pending") or (.metadata.ownerReferences[].kind != "Job" and .status.phase != "Running" and .status.phase != "Pending")) | .metadata.namespace + "/" + .metadata.name' | wc -l`
+		n=`kubectl get pods -n "$POD_NAMESPACE" -o json  | jq -r '.items[] | select((.metadata.ownerReferences[].kind == "Job" and .status.phase != "Succeeded" and .status.phase != "Running" and .status.phase != "Pending") or (.metadata.ownerReferences[].kind != "Job" and .status.phase != "Running" and .status.phase != "Pending")) | .metadata.namespace + "/" + .metadata.name' | wc -l`
 		[[ "$n" -ne 0 ]] && dump && echo "ERROR: pod(s) in error state found!" && return 1
 		RETRIES=$((RETRIES-1))
 		if [[ "$RETRIES" -le 0 ]]
@@ -30,7 +30,7 @@ function waitForPods {
 		
 		echo -n "."
 		sleep $WAIT_PERIOD
-		n=`kubectl get pods -n "$K8S_NAMESPACE" -o json  | jq -r '.items[] | select((.metadata.ownerReferences[].kind == "Job" and .status.phase != "Succeeded") or (.metadata.ownerReferences[].kind != "Job" and .status.phase != "Running") or (.metadata.deletionTimestamp != null)) | .metadata.namespace + "/" + .metadata.name' | wc -l`
+		n=`kubectl get pods -n "$POD_NAMESPACE" -o json  | jq -r '.items[] | select((.metadata.ownerReferences[].kind == "Job" and .status.phase != "Succeeded") or (.metadata.ownerReferences[].kind != "Job" and .status.phase != "Running") or (.metadata.deletionTimestamp != null)) | .metadata.namespace + "/" + .metadata.name' | wc -l`
 	done
 	echo
 }
@@ -42,7 +42,7 @@ function deploy {
     for j in `ls -1 "$i" | grep -E "\.yaml|\.yml"`
     do
       echo "deploying $i/$j ..."
-  	  kubectl create -n "$K8S_NAMESPACE" -f "$i/$j"
+  	  kubectl create -n "$POD_NAMESPACE" -f "$i/$j"
   	  sleep 2
     done
 	waitForPods "$i"
