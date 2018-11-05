@@ -53,7 +53,12 @@ function undeploy {
 if [[ ! -z "${1-}" ]]
 then
 	git clone "$1" git
-	cd git
+	if [[ ! -z "${2-}" ]]
+	then
+		cd git/"$2"
+	else
+		cd git
+	fi
 elif [[ ! -z "${GIT_URL-}" ]]
 then
 	git clone "$GIT_URL" git
